@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Chat Room</title>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" rel="stylesheet">
+    <style>
+        body{
+            background-color: rgb(40, 59, 79);
+        }
+        .tic{
+            font-size: 25px;
+            font-family: 'Black Han Sans', sans-serif;
+            position: relative;
+            z-index : 1;
+            text-align: center;
+            color:white;
+        }
+        .tic:before {
+          content : "";
+          position: absolute;
+          left    : 25%;
+          bottom  : 0;
+          height  : 1px;
+          width   : 50%;  /* or 100px */
+          border-bottom:1px solid white;
+        }
+        .game{
+            text-align: center;
+            align-items: center;
+        }
+        .header{
+            display: inline-block;
+        }
+        .grids{
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: auto auto auto;
+            grid-template-rows: auto;
+            width: 50%;
+        }
+        .grids div{
+            width: 200px;
+            height: 120px;
+            margin: 5px;
+            border:1px solid white
+        }
+        .grids div p{
+            color:white;
+            font-size: 40px;
+            justify-content: center;
+            font-family: 'Black Han Sans', sans-serif;
+            text-align: center;
+        }
+        .buttons{
+            display: block;
+            margin-top:30px;
+        }
+        .buttons span{
+            width: 70px;
+            padding: 15px;
+            background-color: rgb(230, 190, 60);
+            color:black;
+            font-size: 20px;
+            border:2px solid black;
+            font-family: 'Black Han Sans', sans-serif;
+            cursor: pointer;
+            margin:20px
+        }
+        .loaderDiv{
+            position: relative;
+            margin: 0 auto;
+            padding: 20px;
+            resize: both;
+            height: 500px;
+            overflow: auto;
+        }
+        .loaderDiv p{
+            color:white;
+            font-size: 17px;
+            font-family: 'Black Han Sans', sans-serif;
+            transform: translate(-50%, -50%);
+            position: absolute;
+            top: 50%;
+            left: 51%;
+            display: inline-block;
+            margin-top: 50px;
+
+        }
+        .loader{
+            border-radius: 50%;
+            border:5px solid white;
+            border-top:5px solid rgb(40, 59, 79);
+            padding: 10px;
+            animation: spin 2s linear infinite;
+            transform: translate(-50%, -50%);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            resize: both;
+            overflow: auto;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span id="entered">{{ entered }}</span>
+        <div class="loaderDiv" id="loader">
+            <div class="loader">
+
+            </div>
+            <p>Waiting opponent</p>
+        </div>
+        <div class="game" id="game">
+            <div class="header">
+                <p class="tic">Tic Tac Toe</p>
+            </div>
+            <div class="grids" id="grids">
+            </div>
+            <div class="buttons">
+                <span id="person1">{{ sender }}</span>
+                <span id="person2">Ghost</span>
+            </div>
+        </div>
+    </div>
+    <script>
+        var url ="ws://" + window.location.host + '/room2/';
+        let socket = new WebSocket(url);
+        function check() {
+            if (document.getElementById('entered').textContent === 'False'){
+                document.getElementById('game').style = 'display:none'
+            }
+            else{
+                socketInitialize()
+            }
+        }
+        check()
+        function socketInitialize(){
+            socket.onopen = function (e) {
+                if (!socket.readyState){
+                    setTimeout(function () {
+                        socket.send(JSON.stringify({'text':'yes'}))
+                    },100)
+                }
+                else{
+                    socket.send(JSON.stringify({'text':'yes'}))
+                }
+            }
+        }
+        socket.onmessage = function (e) {
+            console.log(e)
+            document.getElementById('game').style = 'display:block';
+            document.getElementById('loader').style = 'display:none';
+        }
+    </script>
+    <script>
+        var curItem = ''
+        for(var i = 0;i < 9;i++){
+            let block = document.createElement("div");
+            let attr = document.createElement('p');
+            let ids = i;
+            block.setAttribute('id',ids);
+            attr.setAttribute('id','element' + i)
+            block.appendChild(attr);
+            document.getElementById('grids').appendChild(block);
+        }
+
+    </script>
+    <script>
+        document.getElementById('person2').setAttribute('style','background-color:white !important');
+        var url ="ws://" + window.location.host + '/room/';
+        var curItem = 'X'
+        var currentVal = document.getElementById('entered').textContent;
+        let socket2 = new WebSocket(url);
+        socket2.onopen = function (e) {
+            iterate(currentVal)
+        }
+        socket2.onmessage = function(e){
+            let splited = e.data.toString().split('/')
+            document.getElementById('element'+splited[0]).innerText = splited[1]
+            if (splited[2] === 'True'){
+                onChangeColor('person1','person2')
+                currentVal = 'False'
+            }
+            else {
+                onChangeColor('person2', 'person1')
+                currentVal = 'True'
+            }
+            iterate(currentVal)
+        }
+        socket2.onerror = function (e) {}
+        function onChangeColor(id,id2) {
+            if (id === 'person1'){
+                curItem = 'X'
+            }
+            else{
+                curItem = 'O'
+            }
+            document.getElementById(id).setAttribute('style','background-color:white !important');
+            document.getElementById(id2).setAttribute('style','background-color:rgb(230, 190, 60) !important');
+        }
+        function onclick() {
+            var data = {
+                'message':curItem + "",
+                'id':this.id,
+                'person1':currentVal+""
+            }
+            socket2.send(JSON.stringify(data));
+        }
+        function iterate() {
+            console.log(currentVal)
+            if(currentVal === 'False'){
+                for (var x = 0;x < 9;x++){
+                    document.getElementById(x).onclick = onclick
+                }
+            }
+        }
+    </script>
+</body>
+</html>
